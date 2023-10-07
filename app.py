@@ -61,7 +61,7 @@ def main():
     mp_hands = mp.solutions.hands
     hands = mp_hands.Hands(
         static_image_mode=use_static_image_mode,
-        max_num_hands=1,
+        max_num_hands=4,
         min_detection_confidence=min_detection_confidence,
         min_tracking_confidence=min_tracking_confidence,
     )
@@ -115,11 +115,16 @@ def main():
         debug_image = copy.deepcopy(image)
 
         # Detection implementation #############################################################
-        image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-
+        #image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
         image.flags.writeable = False
         results = hands.process(image)
         image.flags.writeable = True
+
+        if results.multi_hand_landmarks is None:
+            image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+            image.flags.writeable = False
+            results = hands.process(image)
+            image.flags.writeable = True
 
         #  ####################################################################
         if results.multi_hand_landmarks is not None:
@@ -141,11 +146,28 @@ def main():
 
                 # Hand sign classification
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
+
+#-------NEW CODE-----------------
+                # Detect color of the finger
+                hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+                lower_range = np.array([0, 30, 60])
+                upper_range = np.array([20, 150, 255])
+                mask = cv.inRange(hsv, lower_range, upper_range)
+                contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                if len(contours) > 0:
+                    contour = max(contours, key=cv.contourArea)
+                    (x, y, w, h) = cv.boundingRect(contour)
+                    finger_roi = image[y:y+h, x:x+w]
+                    finger_color = cv.mean(finger_roi)
+                    print(finger_color)
+#--------------------------------
                 if hand_sign_id == 2:  # Point gesture
                     point_history.append(landmark_list[8])
+
                 else:
                     point_history.append([0, 0])
 
+                
                 # Finger gesture classification
                 finger_gesture_id = 0
                 point_history_len = len(pre_processed_point_history_list)
