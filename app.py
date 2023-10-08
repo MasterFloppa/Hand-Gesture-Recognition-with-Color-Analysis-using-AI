@@ -126,8 +126,14 @@ def main():
             results = hands.process(image)
             image.flags.writeable = True
 
+        
+
         #  ####################################################################
         if results.multi_hand_landmarks is not None:
+#-----------NEW CODE-----------------
+            num_hands = len(results.multi_hand_landmarks)
+            #print(f"Number of hands detected: {num_hands}")
+#------------------------------------
             for hand_landmarks, handedness in zip(results.multi_hand_landmarks,
                                                   results.multi_handedness):
                 # Bounding box calculation
@@ -147,7 +153,7 @@ def main():
                 # Hand sign classification
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
 
-#-------NEW CODE-----------------
+#-----------NEW CODE-----------------
                 # Detect color of the finger
                 hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
                 lower_range = np.array([0, 30, 60])
@@ -159,8 +165,8 @@ def main():
                     (x, y, w, h) = cv.boundingRect(contour)
                     finger_roi = image[y:y+h, x:x+w]
                     finger_color = cv.mean(finger_roi)
-                    print(finger_color)
-#--------------------------------
+                    #print(finger_color)
+#------------------------------------
                 if hand_sign_id == 2:  # Point gesture
                     point_history.append(landmark_list[8])
 
@@ -307,7 +313,12 @@ def logging_csv(number, mode, landmark_list, point_history_list):
         csv_path = 'model/keypoint_classifier/keypoint.csv'
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([number, *landmark_list])
+            
+#-----------NEW CODE-----------------
+            #identify colour and append at the end of the row
+            writer.writerow([number, *landmark_list])  
+#------------------------------------
+
     if mode == 2 and (0 <= number <= 9):
         csv_path = 'model/point_history_classifier/point_history.csv'
         with open(csv_path, 'a', newline="") as f:
