@@ -6,6 +6,8 @@ import argparse
 import itertools
 from collections import Counter
 from collections import deque
+from math import ceil
+from math import floor
 
 import cv2 as cv
 import numpy as np
@@ -14,6 +16,7 @@ import mediapipe as mp
 from utils import CvFpsCalc
 from model import KeyPointClassifier
 from model import PointHistoryClassifier
+from model import ColorClassifier
 
 
 def get_args():
@@ -70,6 +73,8 @@ def main():
 
     point_history_classifier = PointHistoryClassifier()
 
+    color_classifier = ColorClassifier()
+
     # Read labels ###########################################################
     with open('model/keypoint_classifier/keypoint_classifier_label.csv',
               encoding='utf-8-sig') as f:
@@ -83,6 +88,13 @@ def main():
         point_history_classifier_labels = csv.reader(f)
         point_history_classifier_labels = [
             row[0] for row in point_history_classifier_labels
+        ]
+    with open(
+            'model/keypoint_classifier_color/keypoint_color_label.csv',
+            encoding='utf-8-sig') as f:
+        keypoint_color_labels = csv.reader(f)
+        keypoint_color_labels = [
+            row[0] for row in keypoint_color_labels
         ]
 
     # FPS Measurement ########################################################
@@ -116,6 +128,7 @@ def main():
 
         # Detection implementation #############################################################
         #image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
+#-----------NEW CODE-----------------        
         image.flags.writeable = False
         results = hands.process(image)
         image.flags.writeable = True
@@ -125,6 +138,7 @@ def main():
             image.flags.writeable = False
             results = hands.process(image)
             image.flags.writeable = True
+#------------------------------------
 
         
 
@@ -141,32 +155,48 @@ def main():
                 # Landmark calculation
                 landmark_list = calc_landmark_list(debug_image, hand_landmarks)
 
+#-----------NEW CODE-----------------
+                # avg mean of colors on the landmarks
+                
+                finger_color = get_landmark_colors(debug_image, landmark_list)
+                # finger_color.append(0.0)
+                print(finger_color)
+
+
+#------------------------------------
+
+#-----------NEW CODE-----------------
+                # Detect color of the finger
+                # hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
+                # lower_range = np.array([0, 30, 60])
+                # upper_range = np.array([20, 150, 255])
+                # mask = cv.inRange(hsv, lower_range, upper_range)
+                # contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+                # if len(contours) > 0:
+                #     contour = max(contours, key=cv.contourArea)
+                #     (x, y, w, h) = cv.boundingRect(contour)
+                #     finger_roi = image[y:y+h, x:x+w]
+                #     finger_color = cv.mean(finger_roi)
+                #     #print(finger_color)
+#------------------------------------
                 # Conversion to relative coordinates / normalized coordinates
                 pre_processed_landmark_list = pre_process_landmark(
                     landmark_list)
                 pre_processed_point_history_list = pre_process_point_history(
                     debug_image, point_history)
+                # pre_processed_color_list = pre_process_color(
+                #     finger_color)
+                pre_processed_color_list = finger_color
+                
+
                 # Write to the dataset file
                 logging_csv(number, mode, pre_processed_landmark_list,
-                            pre_processed_point_history_list)
+                            pre_processed_point_history_list, finger_color)
 
                 # Hand sign classification
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-
-#-----------NEW CODE-----------------
-                # Detect color of the finger
-                hsv = cv.cvtColor(image, cv.COLOR_BGR2HSV)
-                lower_range = np.array([0, 30, 60])
-                upper_range = np.array([20, 150, 255])
-                mask = cv.inRange(hsv, lower_range, upper_range)
-                contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-                if len(contours) > 0:
-                    contour = max(contours, key=cv.contourArea)
-                    (x, y, w, h) = cv.boundingRect(contour)
-                    finger_roi = image[y:y+h, x:x+w]
-                    finger_color = cv.mean(finger_roi)
-                    #print(finger_color)
-#------------------------------------
+                color_id = color_classifier(pre_processed_color_list)
+                #color_id = 0
                 if hand_sign_id == 2:  # Point gesture
                     point_history.append(landmark_list[8])
 
@@ -194,6 +224,7 @@ def main():
                     brect,
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
+                    keypoint_color_labels[color_id],
                     point_history_classifier_labels[most_common_fg_id[0][0]],
                 )
         else:
@@ -201,6 +232,7 @@ def main():
 
         debug_image = draw_point_history(debug_image, point_history)
         debug_image = draw_info(debug_image, fps, mode, number)
+        #debug_image = cv.cvtColor(debug_image, cv.COLOR_BGR2RGB)
 
         # Screen reflection #############################################################
         cv.imshow('Hand Gesture Recognition', debug_image)
@@ -219,6 +251,8 @@ def select_mode(key, mode):
         mode = 1
     if key == 104:  # h
         mode = 2
+    if key == 99:  # c
+        mode = 3
     return number, mode
 
 
@@ -305,8 +339,16 @@ def pre_process_point_history(image, point_history):
 
     return temp_point_history
 
+# def pre_process_color(finger_color):
+#     temp_finger_color = copy.deepcopy(finger_color)
 
-def logging_csv(number, mode, landmark_list, point_history_list):
+#     # Convert to a one-dimensional list
+#     temp_finger_color = list(
+#         itertools.chain.from_iterable(temp_finger_color))
+
+#     return temp_finger_color
+
+def logging_csv(number, mode, landmark_list, point_history_list, finger_color=[0,0,0]):
     if mode == 0:
         pass
     if mode == 1 and (0 <= number <= 9):
@@ -324,9 +366,89 @@ def logging_csv(number, mode, landmark_list, point_history_list):
         with open(csv_path, 'a', newline="") as f:
             writer = csv.writer(f)
             writer.writerow([number, *point_history_list])
+    
+    if mode == 3 and (0 <= number <= 9):                    #color csv file training
+        csv_path = 'model/keypoint_classifier_color/color.csv'
+        with open(csv_path, 'a', newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow([number, *finger_color])
     return
 
+#-----------NEW CODE-----------------
 
+
+
+def line_color(image, x1, y1, x2, y2):
+    num_samples = 100
+
+    # Calculate the step size for sample points
+    step_x = (x2 - x1) / num_samples
+    step_y = (y2 - y1) / num_samples
+
+    # Initialize variables to store the sum of colors
+    sum_red = 0
+    sum_green = 0
+    sum_blue = 0
+
+    # Iterate through sample points and extract colors
+    for i in range(num_samples):
+        x = x1 + i * step_x
+        y = y1 + i * step_y
+        pixel_color = image[int(y), int(x)]
+        # cv.circle(image, (int(x), int(y)), 5, (255, 255, 255),-1)
+        sum_red += pixel_color[2]
+        sum_green += pixel_color[1]
+        sum_blue += pixel_color[0]
+
+    # Calculate the average color
+    average_color = (sum_red/num_samples, sum_green/num_samples, sum_blue/num_samples, 0.0)
+   # print(average_color)
+    return average_color
+    
+
+def get_landmark_colors(image, landmark_list):
+    colors = []
+    mean_color = []
+    
+    # Thumb
+    colors.append(line_color(image, landmark_list[2][0], landmark_list[2][1], landmark_list[3][0], landmark_list[3][1]))
+    colors.append(line_color(image, landmark_list[3][0], landmark_list[3][1], landmark_list[4][0], landmark_list[4][1]))
+
+    # Index finger
+    colors.append(line_color(image, landmark_list[5][0], landmark_list[5][1], landmark_list[6][0], landmark_list[6][1]))
+    colors.append(line_color(image, landmark_list[6][0], landmark_list[6][1], landmark_list[7][0], landmark_list[7][1]))
+    colors.append(line_color(image, landmark_list[7][0], landmark_list[7][1], landmark_list[8][0], landmark_list[8][1]))
+
+    # Middle finger
+    colors.append(line_color(image, landmark_list[9][0], landmark_list[9][1], landmark_list[10][0], landmark_list[10][1]))
+    colors.append(line_color(image, landmark_list[10][0], landmark_list[10][1], landmark_list[11][0], landmark_list[11][1]))
+    colors.append(line_color(image, landmark_list[11][0], landmark_list[11][1], landmark_list[12][0], landmark_list[12][1]))
+
+    # Ring finger
+    colors.append(line_color(image, landmark_list[13][0], landmark_list[13][1], landmark_list[14][0], landmark_list[14][1]))
+    colors.append(line_color(image, landmark_list[14][0], landmark_list[14][1], landmark_list[15][0], landmark_list[15][1]))
+    colors.append(line_color(image, landmark_list[15][0], landmark_list[15][1], landmark_list[16][0], landmark_list[16][1]))
+
+    # Little finger
+    colors.append(line_color(image, landmark_list[17][0], landmark_list[17][1], landmark_list[18][0], landmark_list[18][1]))
+    colors.append(line_color(image, landmark_list[18][0], landmark_list[18][1], landmark_list[19][0], landmark_list[19][1]))
+    colors.append(line_color(image, landmark_list[19][0], landmark_list[19][1], landmark_list[20][0], landmark_list[20][1]))
+
+    # Palm
+    colors.append(line_color(image, landmark_list[0][0], landmark_list[0][1], landmark_list[1][0], landmark_list[1][1]))
+    colors.append(line_color(image, landmark_list[1][0], landmark_list[1][1], landmark_list[2][0], landmark_list[2][1]))
+    colors.append(line_color(image, landmark_list[2][0], landmark_list[2][1], landmark_list[5][0], landmark_list[5][1]))
+    colors.append(line_color(image, landmark_list[5][0], landmark_list[5][1], landmark_list[9][0], landmark_list[9][1]))
+    colors.append(line_color(image, landmark_list[9][0], landmark_list[9][1], landmark_list[13][0], landmark_list[13][1]))
+    colors.append(line_color(image, landmark_list[13][0], landmark_list[13][1], landmark_list[17][0], landmark_list[17][1]))
+    colors.append(line_color(image, landmark_list[17][0], landmark_list[17][1], landmark_list[0][0], landmark_list[0][1]))
+
+    mean_color= np.mean(colors, axis=0)
+    #print(mean_color)
+
+    return mean_color
+
+#------------------------------------
 def draw_landmarks(image, landmark_point):
     if len(landmark_point) > 0:
         # Thumb
@@ -524,14 +646,14 @@ def draw_bounding_rect(use_brect, image, brect):
     return image
 
 
-def draw_info_text(image, brect, handedness, hand_sign_text,
+def draw_info_text(image, brect, handedness, hand_sign_text, colour,
                    finger_gesture_text):
     cv.rectangle(image, (brect[0], brect[1]), (brect[2], brect[1] - 22),
                  (0, 0, 0), -1)
 
     info_text = handedness.classification[0].label[0:]
     if hand_sign_text != "":
-        info_text = info_text + ':' + hand_sign_text
+        info_text = info_text + ':' + hand_sign_text + ':' + colour
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
 
@@ -560,8 +682,8 @@ def draw_info(image, fps, mode, number):
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
                1.0, (255, 255, 255), 2, cv.LINE_AA)
 
-    mode_string = ['Logging Key Point', 'Logging Point History']
-    if 1 <= mode <= 2:
+    mode_string = ['Logging Key Point', 'Logging Point History', 'Logging Color']
+    if 1 <= mode <= 3:
         cv.putText(image, "MODE:" + mode_string[mode - 1], (10, 90),
                    cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1,
                    cv.LINE_AA)
