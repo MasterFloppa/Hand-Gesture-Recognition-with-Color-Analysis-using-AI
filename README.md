@@ -1,9 +1,13 @@
-# hand-gesture-recognition-using-mediapipe
-Estimate hand pose using MediaPipe (Python version).<br> This is a sample 
-program that recognizes hand signs and finger gestures with a simple MLP using the detected key points.
-<br> ❗ _️**This is English Translated version of the [original repo](https://github.com/Kazuhito00/hand-gesture-recognition-using-mediapipe). All Content is translated to english along with comments and notebooks**_ ❗
+# Hand Gesture Recognition with Color Analysis using AI
+
+## Methodology
+This paper introduces an AI-based hand gesture recognition system integrating unique color identification techniques, enhancing precision in human-computer interaction. The approach combines traditional gesture recognition algorithms with color detection techniques. This innovation has broad adaptability across virtual reality, gaming, healthcare, and smart environments, allowing users to convey commands and gain control through color-enhanced gestures. In healthcare, the system can offer a non-intrusive means for professionals to interact with digital interfaces, reducing contamination risks. The paper details the system's design, implementation, and evaluation, showcasing enhanced accuracy and user satisfaction, contributing valuable insights to the evolving field of AI-based gesture recognition and digital interaction. The code will be available at https://github.com/MasterFloppa/Hand-Gesture-Recognition-with-Color-Analysis-using-AI
 <br> 
-![mqlrf-s6x16](https://user-images.githubusercontent.com/37477845/102222442-c452cd00-3f26-11eb-93ec-c387c98231be.gif)
+## Data Collection
+A diverse and comprehensive data set of hand gestures, encompassing various shapes and movements, has been meticulously collected for both training and testing the AI model. The data is structured in a (x, y) coordinate system, where the positional information is utilized during the model training process.
+The incorporation of the media-pipe system proves instrumental in optimizing the model's efficiency. By cropping the image to focus specifically on the hand, the system abstracts the environment, reducing noise and enhancing the model's ability to discern gestures accurately. Notably, the 0th point serves as a reference, establishing the origin for all other points in the coordinate system.
+In parallel, the color data set within the model encompasses the pixel color scheme at these defined coordinates. This information facilitates the model's ability to recognize not only the spatial characteristics of hand gestures but also the associated color cues. This comprehensive approach to data set creation and utilization ensures a robust and versatile training foundation for the AI model, contributing to its efficacy in hand gesture recognition with integrated color identification.
+The dataset is generated dynamically. The key 'k' starts the dataset creation process. Once pressed, the program takes continuous snippets of the hand gesture displayed on the screen on the press of a key. This data is then retrained and used by the system.
 
 This repository contains the following contents.
 * Sample program
@@ -139,12 +143,6 @@ The model using "LSTM" is as follows. <br>Please change "use_lstm = False" to "T
 
 # Reference
 * [MediaPipe](https://mediapipe.dev/)
-
-# Author
-Kazuhito Takahashi(https://twitter.com/KzhtTkhs)
-
-# Translation and other improvements
-Nikita Kiselov(https://github.com/kinivi)
  
 # License 
 hand-gesture-recognition-using-mediapipe is under [Apache v2 license](LICENSE).
