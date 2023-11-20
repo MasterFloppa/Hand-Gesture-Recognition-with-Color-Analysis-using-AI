@@ -47,9 +47,6 @@ You can also collect training data (index finger coordinate history) for finger 
 ### keypoint_classification.ipynb
 This is a model training script for hand sign recognition.
 
-### point_history_classification.ipynb
-This is a model training script for finger gesture recognition.
-
 ### model/keypoint_classifier
 This directory stores files related to hand sign recognition.<br>
 The following files are stored.
