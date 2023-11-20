@@ -39,30 +39,6 @@ Detection confidence threshold (Default：0.5)
 * --min_tracking_confidence<br>
 Tracking confidence threshold (Default：0.5)
 
-# Directory
-<pre>
-│  app.py
-│  keypoint_classification.ipynb
-│  point_history_classification.ipynb
-│  
-├─model
-│  ├─keypoint_classifier
-│  │  │  keypoint.csv
-│  │  │  keypoint_classifier.hdf5
-│  │  │  keypoint_classifier.py
-│  │  │  keypoint_classifier.tflite
-│  │  └─ keypoint_classifier_label.csv
-│  │          
-│  └─point_history_classifier
-│      │  point_history.csv
-│      │  point_history_classifier.hdf5
-│      │  point_history_classifier.py
-│      │  point_history_classifier.tflite
-│      └─ point_history_classifier_label.csv
-│          
-└─utils
-    └─cvfpscalc.py
-</pre>
 ### app.py
 This is a sample program for inference.<br>
 In addition, learning data (key points) for hand sign recognition,<br>
@@ -82,13 +58,13 @@ The following files are stored.
 * Label data(keypoint_classifier_label.csv)
 * Inference module(keypoint_classifier.py)
 
-### model/point_history_classifier
-This directory stores files related to finger gesture recognition.<br>
+### model/keypoint_classifier_color
+This directory stores files related to color recognition.<br>
 The following files are stored.
-* Training data(point_history.csv)
-* Trained model(point_history_classifier.tflite)
-* Label data(point_history_classifier_label.csv)
-* Inference module(point_history_classifier.py)
+* Training data(color.csv)
+* Trained model(color.tflite)
+* Label data(keypoint_classifier_color_label.csv)
+* Inference module(keypoint_classifier_color.py)
 
 ### utils/cvfpscalc.py
 This is a module for FPS measurement.
