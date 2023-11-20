@@ -111,7 +111,13 @@ def main():
     mode = 0
 
     while True:
+        hand_size = [[0.000000,0.000000],[0.000000,0.000000]]
+        hand_type = ["",""]
+
+        index=0
         fps = cvFpsCalc.get()
+        closing=""
+        num_hands = 0
 
         # Process Key (ESC: end) #################################################
         key = cv.waitKey(10)
@@ -162,7 +168,12 @@ def main():
                 # finger_color.append(0.0)
                 print(finger_color)
 
-
+#------------------------------------
+#-----------NEW CODE----------------- relative depth between two hands
+                if num_hands == 2:
+                    hand_size[index] = [brect[2]-brect[0],brect[3]-brect[1]]
+                    hand_type[index] = handedness.classification[0].label[0:]
+                    index = index + 1
 #------------------------------------
 
 #-----------NEW CODE-----------------
@@ -227,16 +238,27 @@ def main():
                     keypoint_color_labels[color_id],
                     point_history_classifier_labels[most_common_fg_id[0][0]],
                 )
+            #comparing areas of two hands
+            if num_hands == 2:
+                if 0.8*hand_size[0][0]*hand_size[0][1] > hand_size[1][0]*hand_size[1][1]:
+                    closing=hand_type[0]+" is closer"
+                elif 0.8*hand_size[1][0]*hand_size[1][1] > hand_size[0][0]*hand_size[0][1]:
+                    closing=hand_type[1]+" is closer"
+                else:
+                    closing="Hands are at the same distance"
+
         else:
             point_history.append([0, 0])
 
-        debug_image = draw_point_history(debug_image, point_history)
-        debug_image = draw_info(debug_image, fps, mode, number)
+        #debug_image = draw_point_history(debug_image, point_history)
+        debug_image = draw_info(debug_image, fps, mode, number, closing, num_hands)
         #debug_image = cv.cvtColor(debug_image, cv.COLOR_BGR2RGB)
 
         # Screen reflection #############################################################
         cv.imshow('Hand Gesture Recognition', debug_image)
+        
 
+    # Post-processing #############################################################
     cap.release()
     cv.destroyAllWindows()
 
@@ -249,8 +271,8 @@ def select_mode(key, mode):
         mode = 0
     if key == 107:  # k
         mode = 1
-    if key == 104:  # h
-        mode = 2
+    # if key == 104:  # h
+    #     mode = 2
     if key == 99:  # c
         mode = 3
     return number, mode
@@ -361,11 +383,11 @@ def logging_csv(number, mode, landmark_list, point_history_list, finger_color=[0
             writer.writerow([number, *landmark_list])  
 #------------------------------------
 
-    if mode == 2 and (0 <= number <= 9):
-        csv_path = 'model/point_history_classifier/point_history.csv'
-        with open(csv_path, 'a', newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([number, *point_history_list])
+    # if mode == 2 and (0 <= number <= 9):
+    #     csv_path = 'model/point_history_classifier/point_history.csv'
+    #     with open(csv_path, 'a', newline="") as f:
+    #         writer = csv.writer(f)
+    #         writer.writerow([number, *point_history_list])
     
     if mode == 3 and (0 <= number <= 9):                    #color csv file training
         csv_path = 'model/keypoint_classifier_color/color.csv'
@@ -657,12 +679,12 @@ def draw_info_text(image, brect, handedness, hand_sign_text, colour,
     cv.putText(image, info_text, (brect[0] + 5, brect[1] - 4),
                cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv.LINE_AA)
 
-    if finger_gesture_text != "":
-        cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
-                   cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv.LINE_AA)
-        cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
-                   cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2,
-                   cv.LINE_AA)
+    #if finger_gesture_text != "":
+        # cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
+        #            cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 4, cv.LINE_AA)
+        # cv.putText(image, "Finger Gesture:" + finger_gesture_text, (10, 60),
+        #            cv.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2,
+        #            cv.LINE_AA)
 
     return image
 
@@ -676,7 +698,7 @@ def draw_point_history(image, point_history):
     return image
 
 
-def draw_info(image, fps, mode, number):
+def draw_info(image, fps, mode, number,closing,num_hands):
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
                1.0, (0, 0, 0), 4, cv.LINE_AA)
     cv.putText(image, "FPS:" + str(fps), (10, 30), cv.FONT_HERSHEY_SIMPLEX,
@@ -691,6 +713,11 @@ def draw_info(image, fps, mode, number):
             cv.putText(image, "NUM:" + str(number), (10, 110),
                        cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1,
                        cv.LINE_AA)
+    if num_hands == 2:
+        cv.putText(image, closing, (10, 60), cv.FONT_HERSHEY_SIMPLEX,
+                   1.0, (0, 0, 0), 4, cv.LINE_AA)
+        cv.putText(image, closing, (10, 60), cv.FONT_HERSHEY_SIMPLEX,
+                   1.0, (255, 255, 255), 2, cv.LINE_AA)
     return image
 
 
